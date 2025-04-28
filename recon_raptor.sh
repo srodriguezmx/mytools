@@ -24,7 +24,7 @@ cat $url/recon/sub_raw.txt | grep $1 >> $url/recon/sub_final.txt
 # httprobe
 echo -e "${orange}[+] Verifiying live subdomains...${reset}"
 cat $url/recon/sub_final.txt | sort -u | httprobe | sed 's/https\?:\/\///' | tr -d ':443' >> $url/recon/sub_live.txt
-cat $url/recon/sub_live.txt
+#cat $url/recon/sub_live.txt
 
 # Gowitness
 echo -e "${orange}[+] Screenshot live subdomains...${reset}"
@@ -32,17 +32,22 @@ gowitness scan file -f $url/recon/sub_final.txt --no-http --save-content --write
 mv gowitness.sqlite3 $url/recon
 mv screenshots/ $url/recon
 
+# Fingerprinting
+echo "[+] Fingerprint..."
+webanalyze -hosts $(pwd)/$url/recon/sub_live.txt -crawl 2 > $url/recon/finger.txt
+
+# Take over scan
+echo "[+] SubDomain Takeover scan ..."
+subzy run --targets $(pwd)/$url/recon/sub_live.txt > $url/recon/takeover.txt
+
 
 # nmap service enumeration
-echo "[+] Enumerating ports and services..."
-nmap -sC -sV -iL $(pwd)/$url/recon/sub_live.txt -oA enumeration
-cat enumeration.nmap
+echo "[+] Nmap enumerating ports and services..."
+nmap -T5 -p- -A -iL $(pwd)/$url/recon/sub_live.txt -oA $url/recon/enumeration
+#cat $url/recon/enumeration.nmap
 
-# nmap all ports, all scripts
-echo "[+] Enumerating running scripts..."
-nmap -T5 -p- -A -iL $(pwd)/$url/recon/sub_live.txt -oA enumeration
-cat scripts.nmap
+# Vulnerability scan
+echo "[+] Vulnerabilty scan ..."
+nuclei -l $(pwd)/$url/recon/sub_live.txt -json-export $url/recon/output.json
 
 echo -e "${green}[+]All Finished.${reset}"
-
-#TODO sacar vulnerability a otro script
